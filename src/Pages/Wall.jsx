@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { Leaf, Megaphone, Award, Newspaper, Heart } from 'lucide-react';
-import { useContent } from '../context/ContentContext';
+import { useContent } from '../Context/ContentContext';
 import { getWallPosts, likeWallPost } from '../lib/contentService';
 import { getSessionId } from '../lib/sessionId';
 

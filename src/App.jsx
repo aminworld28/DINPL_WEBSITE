@@ -1,16 +1,16 @@
 import React from 'react';
 import { BrowserRouter as Router, Routes, Route } from 'react-router-dom';
-import Layout from './components/Layout';
-import Home from './pages/Home';
-import Careers from './pages/Careers';
-import Team from './pages/Team';
-import Wall from './pages/Wall';
-import Collaborate from './pages/Collaborate';
-import About from './pages/About';
-import Contact from './pages/Contact';
-import Admin from './pages/Admin';
-import { ContentProvider } from './context/ContentContext';
-import { AuthProvider } from './context/AuthContext';
+import Layout from './Components/Layout';
+import Home from './Pages/Home';
+import Careers from './Pages/Careers';
+import Team from './Pages/Team';
+import Wall from './Pages/Wall';
+import Collaborate from './Pages/Collaborate';
+import About from './Pages/About';
+import Contact from './Pages/Contact';
+import Admin from './Pages/Admin';
+import { ContentProvider } from './Context/ContentContext';
+import { AuthProvider } from './Context/AuthContext';
 
 const App = () => {
   return (

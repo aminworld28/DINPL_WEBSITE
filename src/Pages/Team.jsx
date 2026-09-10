@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import { BriefcaseBusiness, Quote } from 'lucide-react';
-import { useContent } from '../context/ContentContext';
+import { useContent } from '../Context/ContentContext';
 import { getTeamMembers } from '../lib/contentService';
 
 const Team = () => {

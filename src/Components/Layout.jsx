@@ -2,7 +2,7 @@ import React, { useState } from 'react';
 import PropTypes from 'prop-types';
 import { Link, useLocation } from 'react-router-dom';
 import { Menu, X, Globe, Camera, BriefcaseBusiness } from 'lucide-react';
-import { useContent } from '../context/ContentContext';
+import { useContent } from '../Context/ContentContext';
 
 const NAV_ITEMS = [
   { to: '/', label: 'Home' },

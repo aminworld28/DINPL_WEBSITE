@@ -1,6 +1,6 @@
 import React from 'react';
 import PropTypes from 'prop-types';
-import { useContent } from '../context/ContentContext';
+import { useContent } from '../Context/ContentContext';
 
 /**
  * Reads a site_content value by key with a fallback, rendered as plain text.

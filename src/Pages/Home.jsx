@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import { Briefcase, MessageSquare, Handshake, ArrowRight, Leaf, Megaphone, Award, Newspaper } from 'lucide-react';
-import { useContent } from '../context/ContentContext';
+import { useContent } from '../Context/ContentContext';
 import { getWallPosts } from '../lib/contentService';
 
 const POST_META = {

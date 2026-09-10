@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { Truck, Handshake, Box, FileCheck, Loader2, CheckCircle2 } from 'lucide-react';
-import { useContent } from '../context/ContentContext';
+import { useContent } from '../Context/ContentContext';
 import { submitVendorEnquiry } from '../lib/contentService';
 
 const Collaborate = () => {

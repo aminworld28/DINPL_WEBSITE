@@ -1,6 +1,6 @@
 import React from 'react';
 import { Target, Eye } from 'lucide-react';
-import { useContent } from '../context/ContentContext';
+import { useContent } from '../Context/ContentContext';
 
 const About = () => {
   const { text, brands } = useContent();

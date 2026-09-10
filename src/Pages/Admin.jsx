@@ -5,8 +5,8 @@ import {
   Save, Users as UsersIcon, Briefcase, Handshake, Loader2, CheckCircle2,
   Eye, EyeOff, Download, LogOut, ShieldCheck,
 } from 'lucide-react';
-import { useAuth } from '../context/AuthContext';
-import { useContent } from '../context/ContentContext';
+import { useAuth } from '../Context/AuthContext';
+import { useContent } from '../Context/ContentContext';
 import { login, logout } from '../lib/auth';
 import {
   getWallPosts, createWallPost, deleteWallPost, getAllWallPostsForAdmin,
@@ -19,7 +19,7 @@ import {
   getAdminRoles, setAdminRole,
 } from '../lib/contentService';
 import { getSignedCvUrl } from '../lib/uploadFile';
-import ImageUploadField from '../components/ImageUploadField';
+import ImageUploadField from '../Components/ImageUploadField';
 
 // ---------- Login ----------
 const LoginScreen = () => {
