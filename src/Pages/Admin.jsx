@@ -646,15 +646,27 @@ const RolesTab = () => {
   const [roles, setRoles] = useState([]);
   const [userId, setUserId] = useState('');
   const [role, setRole] = useState('content');
+  const [message, setMessage] = useState('');
+  const [error, setError] = useState('');
 
-  const load = () => getAdminRoles().then(setRoles).catch(console.error);
+  const load = () => getAdminRoles().then(setRoles).catch((err) => setError(err.message));
   useEffect(() => { load(); }, []);
 
   const handleAssign = async () => {
-    if (!userId) return;
-    await setAdminRole(userId, role);
-    setUserId('');
-    load();
+    setMessage('');
+    setError('');
+    if (!userId.trim()) {
+      setError('Enter the user UUID from Supabase Authentication > Users.');
+      return;
+    }
+    try {
+      await setAdminRole(userId.trim(), role);
+      setUserId('');
+      setMessage(`Assigned ${role} role successfully.`);
+      await load();
+    } catch (err) {
+      setError(err.message || 'Could not assign the role.');
+    }
   };
 
   return (
@@ -675,6 +687,8 @@ const RolesTab = () => {
         <button onClick={handleAssign} className="inline-flex items-center gap-2 px-6 py-3 bg-red-600 text-white font-bold rounded-xl uppercase italic tracking-widest text-xs">
           <ShieldCheck size={14} /> Assign Role
         </button>
+        {message && <p className="text-sm text-emerald-600">{message}</p>}
+        {error && <p className="text-sm text-red-600">{error}</p>}
       </div>
 
       <div className="bg-white rounded-3xl border border-slate-200 shadow-sm overflow-hidden">
@@ -688,7 +702,7 @@ const RolesTab = () => {
           <tbody className="divide-y divide-slate-50">
             {roles.map((r) => (
               <tr key={r.user_id}>
-                <td className="px-6 py-4 text-sm">{r.users?.email || r.user_id}</td>
+                <td className="px-6 py-4 text-sm font-mono">{r.user_id}</td>
                 <td className="px-6 py-4"><span className="px-2 py-1 rounded-md bg-slate-100 text-[10px] font-bold uppercase">{r.role}</span></td>
               </tr>
             ))}

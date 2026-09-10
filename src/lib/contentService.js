@@ -191,7 +191,9 @@ export async function updateVendorEnquiryStatus(id, status) {
 // ADMIN ROLES (multi-admin permissions)
 // =====================================================================
 export async function getAdminRoles() {
-  const { data, error } = await supabase.from('admin_roles').select('*, users:user_id(email)');
+  // auth.users is not exposed through the public PostgREST schema, so fetch
+  // role rows directly and let the CMS display the user UUID.
+  const { data, error } = await supabase.from('admin_roles').select('*').order('created_at');
   if (error) throw error;
   return data;
 }
