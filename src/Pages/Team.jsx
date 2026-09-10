@@ -49,11 +49,11 @@ const Team = () => {
           <div className="grid sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-6">
             {filtered.map((m) => (
               <div key={m.id} className="group bg-white rounded-3xl overflow-hidden border border-slate-100 shadow-sm hover:shadow-xl transition-all hover:-translate-y-1">
-                <div className="h-52 overflow-hidden relative">
+                <div className="aspect-[4/5] max-h-80 overflow-hidden relative bg-slate-100">
                   <img
                     src={m.image_url || 'https://images.unsplash.com/photo-1599566150163-29194dcaad36?q=80&w=400&auto=format&fit=crop'}
                     alt={m.name}
-                    className="w-full h-full object-cover grayscale group-hover:grayscale-0 transition-all duration-500"
+                    className="w-full h-full object-cover object-top grayscale group-hover:grayscale-0 transition-all duration-500"
                   />
                   {m.linkedin_url && (
                     <a href={m.linkedin_url} target="_blank" rel="noopener noreferrer"

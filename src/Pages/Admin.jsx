@@ -94,7 +94,7 @@ const SaveButton = ({ onSave, label = 'Save changes' }) => {
 // ---------- Tab: Page Content (site_content text fields + stats) ----------
 const TEXT_FIELDS = [
   { section: 'Home', keys: [
-    ['home.hero.title', 'Hero Title'], ['home.hero.subtitle', 'Hero Subtitle'], ['home.hero.image', 'Hero Image URL'],
+    ['home.hero.title', 'Hero Title'], ['home.hero.subtitle', 'Hero Subtitle'],
     ['home.pillars.careers.title', 'Careers Pillar Title'], ['home.pillars.careers.desc', 'Careers Pillar Text'],
     ['home.pillars.wall.title', 'Wall Pillar Title'], ['home.pillars.wall.desc', 'Wall Pillar Text'],
     ['home.pillars.collaborate.title', 'Collaborate Pillar Title'], ['home.pillars.collaborate.desc', 'Collaborate Pillar Text'],
@@ -136,6 +136,20 @@ const ContentTab = () => {
           folder="branding"
         />
         <SaveButton onSave={async () => updateText('brand.logo', getDraft('brand.logo'))} />
+      </div>
+
+      <div className="bg-white p-8 rounded-[40px] shadow-sm border border-slate-100 space-y-4 max-w-2xl">
+        <div>
+          <h2 className="text-xl font-bold italic uppercase">Home Hero</h2>
+          <p className="text-sm text-slate-400 mt-1">Upload the large background image used on the homepage.</p>
+        </div>
+        <ImageUploadField
+          label="Hero image"
+          value={getDraft('home.hero.image')}
+          onChange={(value) => setDraft('home.hero.image', value)}
+          folder="hero"
+        />
+        <SaveButton onSave={async () => updateText('home.hero.image', getDraft('home.hero.image'))} />
       </div>
 
       {TEXT_FIELDS.map(({ section, keys }) => (
