@@ -119,7 +119,7 @@ const Layout = ({ children }) => {
           </div>
         </div>
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pt-8 border-t border-white/10 text-center text-slate-500 text-xs">
-          © {new Date().getFullYear()} Devyani International Nepal Pvt. Ltd. All rights reserved.
+          © {new Date().getFullYear()} Devyani International Nepal Pvt. Ltd. All rights reserved. || Created by AMIN
         </div>
       </footer>
     </div>
