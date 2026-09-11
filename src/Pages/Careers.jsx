@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { MapPin, Clock, Briefcase, X, Upload, Loader2, CheckCircle2 } from 'lucide-react';
-import { useContent } from '../Context/ContentContext';
+import { useContent } from '../context/ContentContext';
 import { getActiveVacancies, submitApplication } from '../lib/contentService';
 import { uploadFile } from '../lib/uploadFile';
 
@@ -25,7 +25,12 @@ const ApplicationModal = ({ vacancy, onClose }) => {
       });
       setStatus('done');
     } catch (err) {
-      setError(err.message);
+      // Our own validation messages (file type/size) are safe to show verbatim.
+      // Anything else is a backend/network error that could contain internal
+      // details, so show a generic message and keep the real one in the console.
+      const knownMessage = /too large|Please (attach|upload)/.test(err.message) ? err.message : null;
+      setError(knownMessage || 'Something went wrong submitting your application. Please try again.');
+      console.error('Application submission failed:', err);
       setStatus('error');
     }
   };

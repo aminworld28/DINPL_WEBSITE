@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { Truck, Handshake, Box, FileCheck, Loader2, CheckCircle2 } from 'lucide-react';
-import { useContent } from '../Context/ContentContext';
+import { useContent } from '../context/ContentContext';
 import { submitVendorEnquiry } from '../lib/contentService';
 
 const Collaborate = () => {
@@ -18,7 +18,8 @@ const Collaborate = () => {
       setStatus('done');
       setForm({ company_name: '', category: 'Raw Ingredients', contact_name: '', email: '', phone: '', message: '' });
     } catch (err) {
-      setError(err.message);
+      setError('Something went wrong submitting your inquiry. Please try again.');
+      console.error('Vendor enquiry submission failed:', err);
       setStatus('error');
     }
   };
