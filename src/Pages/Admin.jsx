@@ -238,31 +238,51 @@ const emptyMember = () => ({ name: '', role: '', department: '', quote: '', imag
 const TeamTab = () => {
   const [members, setMembers] = useState([]);
   const [draft, setDraft] = useState(emptyMember());
+  const [editingId, setEditingId] = useState(null);
   const [creating, setCreating] = useState(false);
 
   const load = () => getTeamMembers().then(setMembers).catch(console.error);
   useEffect(() => { load(); }, []);
 
+  const resetDraft = () => {
+    setDraft(emptyMember());
+    setEditingId(null);
+  };
+
   const handleCreate = async () => {
     if (!draft.name) return;
     setCreating(true);
     try {
-      await upsertTeamMember({ ...draft, sort_order: members.length });
-      setDraft(emptyMember());
+      const nextSortOrder = editingId !== null ? members.findIndex((m) => m.id === editingId) : members.length;
+      await upsertTeamMember({ ...draft, ...(editingId ? { id: editingId } : {}), sort_order: nextSortOrder >= 0 ? nextSortOrder : members.length });
+      resetDraft();
       load();
     } finally {
       setCreating(false);
     }
   };
 
+  const handleEdit = (member) => {
+    setEditingId(member.id);
+    setDraft({
+      id: member.id,
+      name: member.name || '',
+      role: member.role || '',
+      department: member.department || '',
+      quote: member.quote || '',
+      image_url: member.image_url || '',
+      linkedin_url: member.linkedin_url || '',
+    });
+  };
+
   const handleDelete = async (id) => {
-    if (window.confirm('Remove this team member?')) { await deleteTeamMember(id); load(); }
+    if (window.confirm('Remove this team member?')) { await deleteTeamMember(id); if (editingId === id) resetDraft(); load(); }
   };
 
   return (
     <div className="space-y-8">
       <div className="bg-white p-8 rounded-[40px] shadow-sm border border-slate-100 space-y-4 max-w-2xl">
-        <h2 className="text-xl font-bold italic uppercase mb-2">Add Team Member</h2>
+        <h2 className="text-xl font-bold italic uppercase mb-2">{editingId ? 'Edit Team Member' : 'Add Team Member'}</h2>
         <div className="grid grid-cols-2 gap-4">
           <input placeholder="Name" value={draft.name} onChange={(e) => setDraft({ ...draft, name: e.target.value })}
             className="bg-slate-50 border border-slate-200 rounded-xl px-4 py-3 text-sm outline-none" />
@@ -276,11 +296,19 @@ const TeamTab = () => {
           className="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-3 text-sm outline-none italic" />
         <input placeholder="LinkedIn URL (optional)" value={draft.linkedin_url} onChange={(e) => setDraft({ ...draft, linkedin_url: e.target.value })}
           className="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-3 text-sm outline-none" />
-        <button onClick={handleCreate} disabled={creating}
-          className="inline-flex items-center gap-2 px-6 py-3 bg-red-600 text-white font-bold rounded-xl uppercase italic tracking-widest text-xs disabled:opacity-60">
-          {creating && <Loader2 className="w-4 h-4 animate-spin" />}
-          <Plus size={14} /> Add to Team
-        </button>
+        <div className="flex flex-wrap items-center gap-3">
+          <button onClick={handleCreate} disabled={creating}
+            className="inline-flex items-center gap-2 px-6 py-3 bg-red-600 text-white font-bold rounded-xl uppercase italic tracking-widest text-xs disabled:opacity-60">
+            {creating && <Loader2 className="w-4 h-4 animate-spin" />}
+            {editingId ? <Save size={14} /> : <Plus size={14} />}
+            {editingId ? 'Update Team Member' : 'Add to Team'}
+          </button>
+          {editingId && (
+            <button type="button" onClick={resetDraft} className="px-4 py-3 text-xs font-bold uppercase italic tracking-widest text-slate-500 hover:text-slate-700">
+              Cancel
+            </button>
+          )}
+        </div>
       </div>
 
       <div className="bg-white rounded-3xl border border-slate-200 shadow-sm overflow-hidden">
@@ -300,7 +328,14 @@ const TeamTab = () => {
                 <td className="px-6 py-4 text-xs text-slate-500">{m.role}</td>
                 <td className="px-6 py-4 text-xs text-slate-500">{m.department}</td>
                 <td className="px-6 py-4 text-right">
-                  <button onClick={() => handleDelete(m.id)} className="p-2 text-slate-400 hover:text-red-600"><Trash2 size={16} /></button>
+                  <div className="inline-flex items-center gap-2">
+                    <button onClick={() => handleEdit(m)} className="p-2 text-slate-400 hover:text-red-600" aria-label={`Edit ${m.name}`}>
+                      <Save size={16} />
+                    </button>
+                    <button onClick={() => handleDelete(m.id)} className="p-2 text-slate-400 hover:text-red-600" aria-label={`Delete ${m.name}`}>
+                      <Trash2 size={16} />
+                    </button>
+                  </div>
                 </td>
               </tr>
             ))}
