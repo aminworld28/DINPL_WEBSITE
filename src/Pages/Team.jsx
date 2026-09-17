@@ -18,6 +18,20 @@ const Team = () => {
   }, [members]);
 
   const filtered = activeDept === 'All' ? members : members.filter((m) => m.department === activeDept);
+  const groupedMembers = useMemo(() => {
+    const groups = new Map();
+
+    filtered.forEach((member) => {
+      const department = member.department || 'Other';
+      const group = activeDept === 'All' && ['CFO', 'Country Manager'].includes(department)
+        ? 'Executive Leadership'
+        : department;
+      if (!groups.has(group)) groups.set(group, []);
+      groups.get(group).push(member);
+    });
+
+    return Array.from(groups, ([department, departmentMembers]) => ({ department, members: departmentMembers }));
+  }, [activeDept, filtered]);
 
   return (
     <div className="pb-24">
@@ -46,34 +60,43 @@ const Team = () => {
         {filtered.length === 0 ? (
           <p className="text-center text-slate-400 italic">No team members added yet.</p>
         ) : (
-          <div className="grid sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-6">
-            {filtered.map((m) => (
-              <div key={m.id} className="group bg-white rounded-3xl overflow-hidden border border-slate-100 shadow-sm hover:shadow-xl transition-all hover:-translate-y-1">
-                <div className="aspect-[4/5] max-h-80 overflow-hidden relative bg-slate-100">
-                  <img
-                    src={m.image_url || 'https://images.unsplash.com/photo-1599566150163-29194dcaad36?q=80&w=400&auto=format&fit=crop'}
-                    alt={m.name}
-                    className="w-full h-full object-cover object-top grayscale group-hover:grayscale-0 transition-all duration-500"
-                  />
-                  {m.linkedin_url && (
-                    <a href={m.linkedin_url} target="_blank" rel="noopener noreferrer"
-                      className="absolute bottom-3 right-3 p-2 bg-red-600 text-white rounded-full opacity-0 group-hover:opacity-100 transition-opacity">
-                      <BriefcaseBusiness size={14} />
-                    </a>
-                  )}
-                </div>
-                <div className="p-5">
-                  <h4 className="font-bold text-slate-900 italic uppercase text-sm leading-tight mb-1">{m.name}</h4>
-                  <p className="text-red-600 text-[9px] font-black uppercase tracking-widest mb-1">{m.role}</p>
-                  <p className="text-slate-400 text-[9px] uppercase tracking-widest mb-3">{m.department}</p>
-                  {m.quote && (
-                    <div className="relative">
-                      <Quote className="text-red-500/10 absolute -top-2 -left-1 rotate-180" size={20} />
-                      <p className="text-slate-500 text-[11px] italic leading-relaxed pl-3 border-l-2 border-slate-100">{m.quote}</p>
+          <div className="space-y-16">
+            {groupedMembers.map(({ department, members: departmentMembers }) => (
+              <section key={department} aria-labelledby={`department-${department}`}>
+                <h2 id={`department-${department}`} className="text-xl font-bold text-slate-900 italic uppercase tracking-wide mb-6 border-b border-slate-200 pb-3">
+                  {department}
+                </h2>
+                <div className="grid sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-6">
+                  {departmentMembers.map((m) => (
+                    <div key={m.id} className="group bg-white rounded-3xl overflow-hidden border border-slate-100 shadow-sm hover:shadow-xl transition-all hover:-translate-y-1">
+                      <div className="aspect-[4/5] max-h-80 overflow-hidden relative bg-slate-100">
+                        <img
+                          src={m.image_url || 'https://images.unsplash.com/photo-1599566150163-29194dcaad36?q=80&w=400&auto=format&fit=crop'}
+                          alt={m.name}
+                          className="w-full h-full object-cover object-top grayscale group-hover:grayscale-0 transition-all duration-500"
+                        />
+                        {m.linkedin_url && (
+                          <a href={m.linkedin_url} target="_blank" rel="noopener noreferrer"
+                            className="absolute bottom-3 right-3 p-2 bg-red-600 text-white rounded-full opacity-0 group-hover:opacity-100 transition-opacity">
+                            <BriefcaseBusiness size={14} />
+                          </a>
+                        )}
+                      </div>
+                      <div className="p-5">
+                        <h4 className="font-bold text-slate-900 italic uppercase text-sm leading-tight mb-1">{m.name}</h4>
+                        <p className="text-red-600 text-[9px] font-black uppercase tracking-widest mb-1">{m.role}</p>
+                        <p className="text-slate-400 text-[9px] uppercase tracking-widest mb-3">{m.department}</p>
+                        {m.quote && (
+                          <div className="relative">
+                            <Quote className="text-red-500/10 absolute -top-2 -left-1 rotate-180" size={20} />
+                            <p className="text-slate-500 text-[11px] italic leading-relaxed pl-3 border-l-2 border-slate-100">{m.quote}</p>
+                          </div>
+                        )}
+                      </div>
                     </div>
-                  )}
+                  ))}
                 </div>
-              </div>
+              </section>
             ))}
           </div>
         )}
