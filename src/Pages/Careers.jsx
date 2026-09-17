@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { MapPin, Clock, Briefcase, X, Upload, Loader2, CheckCircle2 } from 'lucide-react';
-import { useContent } from '../context/ContentContext';
+import { useContent } from '../Context/ContentContext';
 import { getActiveVacancies, submitApplication } from '../lib/contentService';
 import { uploadFile } from '../lib/uploadFile';
 
