@@ -94,6 +94,10 @@ export async function createWallPost(post) {
   const { error } = await supabase.from('wall_posts').insert(post);
   if (error) throw error;
 }
+export async function updateWallPost(id, partial) {
+  const { error } = await supabase.from('wall_posts').update(partial).eq('id', id);
+  if (error) throw error;
+}
 export async function deleteWallPost(id) {
   const { error } = await supabase.from('wall_posts').delete().eq('id', id);
   if (error) throw error;

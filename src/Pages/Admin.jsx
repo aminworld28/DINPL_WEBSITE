@@ -3,13 +3,13 @@ import { Link } from 'react-router-dom';
 import {
   Plus, Trash2, LayoutDashboard, ArrowLeft, Settings, MessageSquare, Globe,
   Save, Users as UsersIcon, Briefcase, Handshake, Loader2, CheckCircle2,
-  Eye, EyeOff, Download, LogOut, ShieldCheck,
+  Eye, EyeOff, Download, LogOut, ShieldCheck, Search, X,
 } from 'lucide-react';
 import { useAuth } from '../Context/AuthContext';
 import { useContent } from '../Context/ContentContext';
 import { login, logout } from '../lib/auth';
 import {
-  getWallPosts, createWallPost, deleteWallPost, getAllWallPostsForAdmin,
+  getWallPosts, createWallPost, updateWallPost, deleteWallPost, getAllWallPostsForAdmin,
   getAllVacanciesForAdmin, createVacancy, updateVacancy, deleteVacancy,
   getApplications, updateApplicationStatus,
   getVendorEnquiries, updateVendorEnquiryStatus,
@@ -233,30 +233,55 @@ const BrandsTab = () => {
 };
 
 // ---------- Tab: Team ----------
-const emptyMember = () => ({ name: '', role: '', department: '', quote: '', image_url: '', linkedin_url: '' });
+const emptyMember = () => ({ name: '', role: '', department: '', quote: '', image_url: '', linkedin_url: '', sort_order: 0 });
 
 const TeamTab = () => {
   const [members, setMembers] = useState([]);
   const [draft, setDraft] = useState(emptyMember());
   const [editingId, setEditingId] = useState(null);
   const [creating, setCreating] = useState(false);
+  const [error, setError] = useState('');
+  const [searchQuery, setSearchQuery] = useState('');
+  const [deptFilter, setDeptFilter] = useState('All');
+  const formRef = React.useRef(null);
 
   const load = () => getTeamMembers().then(setMembers).catch(console.error);
   useEffect(() => { load(); }, []);
 
+  const departmentOptions = React.useMemo(() => {
+    const set = new Set(members.map((m) => m.department).filter(Boolean));
+    return ['All', ...Array.from(set).sort()];
+  }, [members]);
+
+  const filteredMembers = React.useMemo(() => {
+    const q = searchQuery.trim().toLowerCase();
+    return members.filter((m) => {
+      const matchesDept = deptFilter === 'All' || m.department === deptFilter;
+      const matchesQuery = !q || m.name?.toLowerCase().includes(q) || m.role?.toLowerCase().includes(q);
+      return matchesDept && matchesQuery;
+    });
+  }, [members, searchQuery, deptFilter]);
+
   const resetDraft = () => {
     setDraft(emptyMember());
     setEditingId(null);
+    setError('');
   };
 
   const handleCreate = async () => {
     if (!draft.name) return;
     setCreating(true);
+    setError('');
     try {
-      const nextSortOrder = editingId !== null ? members.findIndex((m) => m.id === editingId) : members.length;
-      await upsertTeamMember({ ...draft, ...(editingId ? { id: editingId } : {}), sort_order: nextSortOrder >= 0 ? nextSortOrder : members.length });
+      const sortOrder = draft.sort_order === '' || draft.sort_order === undefined || draft.sort_order === null
+        ? members.length
+        : Number(draft.sort_order);
+      await upsertTeamMember({ ...draft, ...(editingId ? { id: editingId } : {}), sort_order: sortOrder });
       resetDraft();
       load();
+    } catch (err) {
+      console.error('Team member save failed:', err);
+      setError(err.message || 'Could not save this team member. You may not have permission — check that your account has the hr or super_admin role.');
     } finally {
       setCreating(false);
     }
@@ -264,6 +289,7 @@ const TeamTab = () => {
 
   const handleEdit = (member) => {
     setEditingId(member.id);
+    setError('');
     setDraft({
       id: member.id,
       name: member.name || '',
@@ -272,7 +298,9 @@ const TeamTab = () => {
       quote: member.quote || '',
       image_url: member.image_url || '',
       linkedin_url: member.linkedin_url || '',
+      sort_order: member.sort_order ?? 0,
     });
+    formRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' });
   };
 
   const handleDelete = async (id) => {
@@ -281,7 +309,7 @@ const TeamTab = () => {
 
   return (
     <div className="space-y-8">
-      <div className="bg-white p-8 rounded-[40px] shadow-sm border border-slate-100 space-y-4 max-w-2xl">
+      <div ref={formRef} className="bg-white p-8 rounded-[40px] shadow-sm border border-slate-100 space-y-4 max-w-2xl">
         <h2 className="text-xl font-bold italic uppercase mb-2">{editingId ? 'Edit Team Member' : 'Add Team Member'}</h2>
         <div className="grid grid-cols-2 gap-4">
           <input placeholder="Name" value={draft.name} onChange={(e) => setDraft({ ...draft, name: e.target.value })}
@@ -289,13 +317,21 @@ const TeamTab = () => {
           <input placeholder="Role/Title" value={draft.role} onChange={(e) => setDraft({ ...draft, role: e.target.value })}
             className="bg-slate-50 border border-slate-200 rounded-xl px-4 py-3 text-sm outline-none" />
         </div>
-        <input placeholder="Department" value={draft.department} onChange={(e) => setDraft({ ...draft, department: e.target.value })}
-          className="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-3 text-sm outline-none" />
+        <div className="grid grid-cols-3 gap-4">
+          <input placeholder="Department" value={draft.department} onChange={(e) => setDraft({ ...draft, department: e.target.value })}
+            className="col-span-2 bg-slate-50 border border-slate-200 rounded-xl px-4 py-3 text-sm outline-none" />
+          <div>
+            <input type="number" placeholder="Sort Order" value={draft.sort_order} onChange={(e) => setDraft({ ...draft, sort_order: e.target.value })}
+              className="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-3 text-sm outline-none" />
+            <p className="text-[10px] text-slate-400 mt-1 leading-tight">Lower shows first. Same number ties two people together.</p>
+          </div>
+        </div>
         <ImageUploadField label="Photo" value={draft.image_url} onChange={(url) => setDraft({ ...draft, image_url: url })} folder="team" />
         <textarea rows={2} placeholder="Personal quote / style" value={draft.quote} onChange={(e) => setDraft({ ...draft, quote: e.target.value })}
           className="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-3 text-sm outline-none italic" />
         <input placeholder="LinkedIn URL (optional)" value={draft.linkedin_url} onChange={(e) => setDraft({ ...draft, linkedin_url: e.target.value })}
           className="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-3 text-sm outline-none" />
+        {error && <p className="text-xs text-red-600 italic">{error}</p>}
         <div className="flex flex-wrap items-center gap-3">
           <button onClick={handleCreate} disabled={creating}
             className="inline-flex items-center gap-2 px-6 py-3 bg-red-600 text-white font-bold rounded-xl uppercase italic tracking-widest text-xs disabled:opacity-60">
@@ -311,6 +347,33 @@ const TeamTab = () => {
         </div>
       </div>
 
+      <div className="flex flex-col sm:flex-row gap-3 sm:items-center sm:justify-between">
+        <div className="relative w-full sm:max-w-xs">
+          <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" size={16} />
+          <input
+            placeholder="Search by name or role..."
+            value={searchQuery}
+            onChange={(e) => setSearchQuery(e.target.value)}
+            className="w-full bg-white border border-slate-200 rounded-xl pl-9 pr-9 py-2.5 text-sm outline-none focus:ring-2 focus:ring-red-600"
+          />
+          {searchQuery && (
+            <button onClick={() => setSearchQuery('')} className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-300 hover:text-slate-500">
+              <X size={14} />
+            </button>
+          )}
+        </div>
+        <div className="flex items-center gap-2">
+          <span className="text-xs text-slate-400 font-medium">{filteredMembers.length} of {members.length}</span>
+          <select
+            value={deptFilter}
+            onChange={(e) => setDeptFilter(e.target.value)}
+            className="bg-white border border-slate-200 rounded-xl px-3 py-2.5 text-sm outline-none focus:ring-2 focus:ring-red-600"
+          >
+            {departmentOptions.map((d) => <option key={d} value={d}>{d}</option>)}
+          </select>
+        </div>
+      </div>
+
       <div className="bg-white rounded-3xl border border-slate-200 shadow-sm overflow-hidden">
         <table className="w-full text-left">
           <thead>
@@ -318,15 +381,17 @@ const TeamTab = () => {
               <th className="px-6 py-4 text-[10px] font-bold uppercase tracking-widest text-slate-400">Name</th>
               <th className="px-6 py-4 text-[10px] font-bold uppercase tracking-widest text-slate-400">Role</th>
               <th className="px-6 py-4 text-[10px] font-bold uppercase tracking-widest text-slate-400">Department</th>
+              <th className="px-6 py-4 text-[10px] font-bold uppercase tracking-widest text-slate-400">Sort Order</th>
               <th className="px-6 py-4 text-[10px] font-bold uppercase tracking-widest text-slate-400 text-right">Actions</th>
             </tr>
           </thead>
           <tbody className="divide-y divide-slate-50">
-            {members.map((m) => (
+            {filteredMembers.map((m) => (
               <tr key={m.id} className="hover:bg-slate-50/50">
                 <td className="px-6 py-4 font-bold text-sm italic">{m.name}</td>
                 <td className="px-6 py-4 text-xs text-slate-500">{m.role}</td>
                 <td className="px-6 py-4 text-xs text-slate-500">{m.department}</td>
+                <td className="px-6 py-4 text-xs text-slate-500">{m.sort_order}</td>
                 <td className="px-6 py-4 text-right">
                   <div className="inline-flex items-center gap-2">
                     <button onClick={() => handleEdit(m)} className="p-2 text-slate-400 hover:text-red-600" aria-label={`Edit ${m.name}`}>
@@ -340,7 +405,10 @@ const TeamTab = () => {
               </tr>
             ))}
             {members.length === 0 && (
-              <tr><td colSpan={4} className="px-6 py-8 text-center text-slate-400 italic text-sm">No team members added yet.</td></tr>
+              <tr><td colSpan={5} className="px-6 py-8 text-center text-slate-400 italic text-sm">No team members added yet.</td></tr>
+            )}
+            {members.length > 0 && filteredMembers.length === 0 && (
+              <tr><td colSpan={5} className="px-6 py-8 text-center text-slate-400 italic text-sm">No members match your search/filter.</td></tr>
             )}
           </tbody>
         </table>
@@ -357,36 +425,68 @@ const POST_TYPES = [
   { id: 'announcement', label: 'Announcement' },
 ];
 
+const emptyWallDraft = () => ({ type: 'csr', title: '', content: '', image_url: '', publish_at: '', expire_at: '' });
+
 const WallTab = () => {
   const [posts, setPosts] = useState([]);
-  const [draft, setDraft] = useState({ type: 'csr', title: '', content: '', image_url: '', publish_at: '', expire_at: '' });
+  const [draft, setDraft] = useState(emptyWallDraft());
+  const [editingId, setEditingId] = useState(null);
   const [creating, setCreating] = useState(false);
+  const [error, setError] = useState('');
+  const formRef = React.useRef(null);
 
   const load = () => getAllWallPostsForAdmin().then(setPosts).catch(console.error);
   useEffect(() => { load(); }, []);
 
+  const toLocalInput = (iso) => (iso ? new Date(iso).toISOString().slice(0, 16) : '');
+
+  const resetDraft = () => {
+    setDraft(emptyWallDraft());
+    setEditingId(null);
+    setError('');
+  };
+
   const handleCreate = async () => {
     if (!draft.title || !draft.content) return;
     setCreating(true);
+    setError('');
     try {
-      await createWallPost({
+      const payload = {
         type: draft.type, title: draft.title, content: draft.content, image_url: draft.image_url || null,
         publish_at: draft.publish_at ? new Date(draft.publish_at).toISOString() : new Date().toISOString(),
         expire_at: draft.expire_at ? new Date(draft.expire_at).toISOString() : null,
-      });
-      setDraft({ type: 'csr', title: '', content: '', image_url: '', publish_at: '', expire_at: '' });
+      };
+      if (editingId) {
+        await updateWallPost(editingId, payload);
+      } else {
+        await createWallPost(payload);
+      }
+      resetDraft();
       load();
+    } catch (err) {
+      console.error('Wall post save failed:', err);
+      setError(err.message || 'Could not save this post. You may not have permission.');
     } finally {
       setCreating(false);
     }
   };
 
-  const handleDelete = async (id) => { if (window.confirm('Delete this post?')) { await deleteWallPost(id); load(); } };
+  const handleEdit = (post) => {
+    setEditingId(post.id);
+    setError('');
+    setDraft({
+      type: post.type, title: post.title, content: post.content, image_url: post.image_url || '',
+      publish_at: toLocalInput(post.publish_at), expire_at: toLocalInput(post.expire_at),
+    });
+    formRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+  };
+
+  const handleDelete = async (id) => { if (window.confirm('Delete this post?')) { await deleteWallPost(id); if (editingId === id) resetDraft(); load(); } };
 
   return (
     <div className="space-y-8">
-      <div className="bg-white p-8 rounded-[40px] shadow-sm border border-slate-100 space-y-4 max-w-2xl">
-        <h2 className="text-xl font-bold italic uppercase mb-2">New Wall Post</h2>
+      <div ref={formRef} className="bg-white p-8 rounded-[40px] shadow-sm border border-slate-100 space-y-4 max-w-2xl">
+        <h2 className="text-xl font-bold italic uppercase mb-2">{editingId ? 'Edit Wall Post' : 'New Wall Post'}</h2>
         <select value={draft.type} onChange={(e) => setDraft({ ...draft, type: e.target.value })}
           className="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-3 text-sm outline-none">
           {POST_TYPES.map((t) => <option key={t.id} value={t.id}>{t.label}</option>)}
@@ -408,11 +508,20 @@ const WallTab = () => {
               className="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-3 text-sm outline-none" />
           </div>
         </div>
-        <button onClick={handleCreate} disabled={creating}
-          className="inline-flex items-center gap-2 px-6 py-3 bg-red-600 text-white font-bold rounded-xl uppercase italic tracking-widest text-xs disabled:opacity-60">
-          {creating && <Loader2 className="w-4 h-4 animate-spin" />}
-          <Plus size={14} /> Publish Post
-        </button>
+        {error && <p className="text-xs text-red-600 italic">{error}</p>}
+        <div className="flex flex-wrap items-center gap-3">
+          <button onClick={handleCreate} disabled={creating}
+            className="inline-flex items-center gap-2 px-6 py-3 bg-red-600 text-white font-bold rounded-xl uppercase italic tracking-widest text-xs disabled:opacity-60">
+            {creating && <Loader2 className="w-4 h-4 animate-spin" />}
+            {editingId ? <Save size={14} /> : <Plus size={14} />}
+            {editingId ? 'Update Post' : 'Publish Post'}
+          </button>
+          {editingId && (
+            <button type="button" onClick={resetDraft} className="px-4 py-3 text-xs font-bold uppercase italic tracking-widest text-slate-500 hover:text-slate-700">
+              Cancel
+            </button>
+          )}
+        </div>
       </div>
 
       <div className="bg-white rounded-3xl border border-slate-200 shadow-sm overflow-hidden">
@@ -435,7 +544,10 @@ const WallTab = () => {
                 </td>
                 <td className="px-6 py-4 text-xs text-slate-500">{p.likes_count}</td>
                 <td className="px-6 py-4 text-right">
-                  <button onClick={() => handleDelete(p.id)} className="p-2 text-slate-400 hover:text-red-600"><Trash2 size={16} /></button>
+                  <div className="inline-flex items-center gap-2">
+                    <button onClick={() => handleEdit(p)} className="p-2 text-slate-400 hover:text-red-600" aria-label={`Edit ${p.title}`}><Save size={16} /></button>
+                    <button onClick={() => handleDelete(p.id)} className="p-2 text-slate-400 hover:text-red-600"><Trash2 size={16} /></button>
+                  </div>
                 </td>
               </tr>
             ))}
@@ -450,45 +562,86 @@ const WallTab = () => {
 };
 
 // ---------- Tab: Internal Programs ----------
+const emptyProgram = () => ({ title: '', description: '', image_url: '' });
+
 const ProgramsTab = () => {
   const [programs, setPrograms] = useState([]);
-  const [draft, setDraft] = useState({ title: '', description: '', image_url: '' });
+  const [draft, setDraft] = useState(emptyProgram());
+  const [editingId, setEditingId] = useState(null);
   const [creating, setCreating] = useState(false);
+  const [error, setError] = useState('');
+  const formRef = React.useRef(null);
 
   const load = () => getInternalPrograms().then(setPrograms).catch(console.error);
   useEffect(() => { load(); }, []);
 
+  const resetDraft = () => { setDraft(emptyProgram()); setEditingId(null); setError(''); };
+
   const handleCreate = async () => {
     if (!draft.title) return;
     setCreating(true);
+    setError('');
     try {
-      await upsertInternalProgram({ ...draft, sort_order: programs.length });
-      setDraft({ title: '', description: '', image_url: '' });
+      const sortOrder = editingId
+        ? programs.find((p) => p.id === editingId)?.sort_order ?? programs.length
+        : programs.length;
+      await upsertInternalProgram({ ...draft, ...(editingId ? { id: editingId } : {}), sort_order: sortOrder });
+      resetDraft();
       load();
+    } catch (err) {
+      console.error('Program save failed:', err);
+      setError(err.message || 'Could not save this program. You may not have permission.');
     } finally { setCreating(false); }
   };
-  const handleDelete = async (id) => { await deleteInternalProgram(id); load(); };
+
+  const handleEdit = (program) => {
+    setEditingId(program.id);
+    setError('');
+    setDraft({ title: program.title || '', description: program.description || '', image_url: program.image_url || '' });
+    formRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+  };
+
+  const handleDelete = async (id) => { if (window.confirm('Remove this program?')) { await deleteInternalProgram(id); if (editingId === id) resetDraft(); load(); } };
 
   return (
     <div className="space-y-8">
-      <div className="bg-white p-8 rounded-[40px] shadow-sm border border-slate-100 space-y-4 max-w-2xl">
-        <h2 className="text-xl font-bold italic uppercase mb-2">Add Internal Program</h2>
+      <div ref={formRef} className="bg-white p-8 rounded-[40px] shadow-sm border border-slate-100 space-y-4 max-w-2xl">
+        <h2 className="text-xl font-bold italic uppercase mb-2">{editingId ? 'Edit Internal Program' : 'Add Internal Program'}</h2>
         <input placeholder="Program title" value={draft.title} onChange={(e) => setDraft({ ...draft, title: e.target.value })}
           className="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-3 text-sm outline-none" />
         <textarea rows={3} placeholder="Description" value={draft.description} onChange={(e) => setDraft({ ...draft, description: e.target.value })}
           className="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-3 text-sm outline-none" />
-        <ImageUploadField value={draft.image_url} onChange={(url) => setDraft({ ...draft, image_url: url })} folder="programs" />
-        <button onClick={handleCreate} disabled={creating}
-          className="inline-flex items-center gap-2 px-6 py-3 bg-red-600 text-white font-bold rounded-xl uppercase italic tracking-widest text-xs disabled:opacity-60">
-          {creating && <Loader2 className="w-4 h-4 animate-spin" />}<Plus size={14} /> Add Program
-        </button>
+        <div>
+          <ImageUploadField value={draft.image_url} onChange={(url) => setDraft({ ...draft, image_url: url })} folder="programs" />
+          <p className="text-[10px] text-slate-400 mt-1">Recommended: 800×450px (16:9) landscape photo — it displays in a fixed-height card, so square or portrait photos will get cropped.</p>
+        </div>
+        {error && <p className="text-xs text-red-600 italic">{error}</p>}
+        <div className="flex flex-wrap items-center gap-3">
+          <button onClick={handleCreate} disabled={creating}
+            className="inline-flex items-center gap-2 px-6 py-3 bg-red-600 text-white font-bold rounded-xl uppercase italic tracking-widest text-xs disabled:opacity-60">
+            {creating && <Loader2 className="w-4 h-4 animate-spin" />}
+            {editingId ? <Save size={14} /> : <Plus size={14} />}
+            {editingId ? 'Update Program' : 'Add Program'}
+          </button>
+          {editingId && (
+            <button type="button" onClick={resetDraft} className="px-4 py-3 text-xs font-bold uppercase italic tracking-widest text-slate-500 hover:text-slate-700">
+              Cancel
+            </button>
+          )}
+        </div>
       </div>
       <div className="grid md:grid-cols-3 gap-6">
         {programs.map((p) => (
-          <div key={p.id} className="bg-white p-6 rounded-2xl border border-slate-100 shadow-sm relative">
-            <button onClick={() => handleDelete(p.id)} className="absolute top-4 right-4 text-red-400 hover:text-red-600"><Trash2 size={16} /></button>
-            <h4 className="font-bold italic mb-2">{p.title}</h4>
-            <p className="text-xs text-slate-500">{p.description}</p>
+          <div key={p.id} className="bg-white rounded-2xl border border-slate-100 shadow-sm relative overflow-hidden">
+            <div className="absolute top-4 right-4 z-10 flex items-center gap-2">
+              <button onClick={() => handleEdit(p)} className="p-2 bg-white/90 rounded-lg text-slate-500 hover:text-red-600 shadow-sm" aria-label={`Edit ${p.title}`}><Save size={16} /></button>
+              <button onClick={() => handleDelete(p.id)} className="p-2 bg-white/90 rounded-lg text-red-400 hover:text-red-600 shadow-sm"><Trash2 size={16} /></button>
+            </div>
+            {p.image_url && <div className="h-40 overflow-hidden"><img src={p.image_url} alt="" className="w-full h-full object-cover" /></div>}
+            <div className="p-6">
+              <h4 className="font-bold italic mb-2">{p.title}</h4>
+              <p className="text-xs text-slate-500">{p.description}</p>
+            </div>
           </div>
         ))}
       </div>
@@ -502,27 +655,53 @@ const emptyVacancy = { title: '', department: '', location: '', employment_type:
 const VacanciesTab = () => {
   const [vacancies, setVacancies] = useState([]);
   const [draft, setDraft] = useState(emptyVacancy);
+  const [editingId, setEditingId] = useState(null);
   const [creating, setCreating] = useState(false);
+  const [error, setError] = useState('');
+  const formRef = React.useRef(null);
 
   const load = () => getAllVacanciesForAdmin().then(setVacancies).catch(console.error);
   useEffect(() => { load(); }, []);
 
+  const resetDraft = () => { setDraft(emptyVacancy); setEditingId(null); setError(''); };
+
   const handleCreate = async () => {
     if (!draft.title) return;
     setCreating(true);
+    setError('');
     try {
-      await createVacancy({ ...draft, deadline: draft.deadline || null });
-      setDraft(emptyVacancy);
+      const payload = { ...draft, deadline: draft.deadline || null };
+      if (editingId) {
+        await updateVacancy(editingId, payload);
+      } else {
+        await createVacancy(payload);
+      }
+      resetDraft();
       load();
+    } catch (err) {
+      console.error('Vacancy save failed:', err);
+      setError(err.message || 'Could not save this vacancy. You may not have permission.');
     } finally { setCreating(false); }
   };
+
+  const handleEdit = (vacancy) => {
+    setEditingId(vacancy.id);
+    setError('');
+    setDraft({
+      title: vacancy.title || '', department: vacancy.department || '', location: vacancy.location || '',
+      employment_type: vacancy.employment_type || 'Full-time', description: vacancy.description || '',
+      requirements: vacancy.requirements || '', deadline: vacancy.deadline || '', active: vacancy.active,
+    });
+    formRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+  };
+
   const toggleActive = async (v) => { await updateVacancy(v.id, { active: !v.active }); load(); };
-  const handleDelete = async (id) => { if (window.confirm('Delete this vacancy?')) { await deleteVacancy(id); load(); } };
+  const handleDelete = async (id) => { if (window.confirm('Delete this vacancy?')) { await deleteVacancy(id); if (editingId === id) resetDraft(); load(); } };
 
   return (
     <div className="space-y-8">
-      <div className="bg-white p-8 rounded-[40px] shadow-sm border border-slate-100 space-y-4 max-w-2xl">
-        <h2 className="text-xl font-bold italic uppercase mb-2">New Vacancy</h2>
+      <div ref={formRef} className="bg-white p-8 rounded-[40px] shadow-sm border border-slate-100 space-y-4 max-w-2xl">
+        <h2 className="text-xl font-bold italic uppercase mb-2">{editingId ? 'Edit Vacancy' : 'New Vacancy'}</h2>
         <input placeholder="Job Title" value={draft.title} onChange={(e) => setDraft({ ...draft, title: e.target.value })}
           className="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-3 text-sm outline-none" />
         <div className="grid grid-cols-2 gap-4">
@@ -543,10 +722,20 @@ const VacanciesTab = () => {
           className="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-3 text-sm outline-none" />
         <textarea rows={2} placeholder="Requirements" value={draft.requirements} onChange={(e) => setDraft({ ...draft, requirements: e.target.value })}
           className="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-3 text-sm outline-none italic" />
-        <button onClick={handleCreate} disabled={creating}
-          className="inline-flex items-center gap-2 px-6 py-3 bg-red-600 text-white font-bold rounded-xl uppercase italic tracking-widest text-xs disabled:opacity-60">
-          {creating && <Loader2 className="w-4 h-4 animate-spin" />}<Plus size={14} /> Post Vacancy
-        </button>
+        {error && <p className="text-xs text-red-600 italic">{error}</p>}
+        <div className="flex flex-wrap items-center gap-3">
+          <button onClick={handleCreate} disabled={creating}
+            className="inline-flex items-center gap-2 px-6 py-3 bg-red-600 text-white font-bold rounded-xl uppercase italic tracking-widest text-xs disabled:opacity-60">
+            {creating && <Loader2 className="w-4 h-4 animate-spin" />}
+            {editingId ? <Save size={14} /> : <Plus size={14} />}
+            {editingId ? 'Update Vacancy' : 'Post Vacancy'}
+          </button>
+          {editingId && (
+            <button type="button" onClick={resetDraft} className="px-4 py-3 text-xs font-bold uppercase italic tracking-widest text-slate-500 hover:text-slate-700">
+              Cancel
+            </button>
+          )}
+        </div>
       </div>
 
       <div className="bg-white rounded-3xl border border-slate-200 shadow-sm overflow-hidden">
@@ -570,7 +759,10 @@ const VacanciesTab = () => {
                   </button>
                 </td>
                 <td className="px-6 py-4 text-right">
-                  <button onClick={() => handleDelete(v.id)} className="p-2 text-slate-400 hover:text-red-600"><Trash2 size={16} /></button>
+                  <div className="inline-flex items-center gap-2">
+                    <button onClick={() => handleEdit(v)} className="p-2 text-slate-400 hover:text-red-600" aria-label={`Edit ${v.title}`}><Save size={16} /></button>
+                    <button onClick={() => handleDelete(v.id)} className="p-2 text-slate-400 hover:text-red-600"><Trash2 size={16} /></button>
+                  </div>
                 </td>
               </tr>
             ))}

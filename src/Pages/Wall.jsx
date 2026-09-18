@@ -1,4 +1,5 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
+import { useSearchParams } from 'react-router-dom';
 import { Leaf, Megaphone, Award, Newspaper, Heart } from 'lucide-react';
 import { useContent } from '../Context/ContentContext';
 import { getWallPosts, likeWallPost } from '../lib/contentService';
@@ -24,12 +25,31 @@ const Wall = () => {
   const [posts, setPosts] = useState([]);
   const [filter, setFilter] = useState('all');
   const [likedIds, setLikedIds] = useState(new Set());
+  const [searchParams] = useSearchParams();
+  const highlightId = searchParams.get('post');
+  const postRefs = useRef({});
+  const hasScrolled = useRef(false);
 
   const load = () => {
     getWallPosts({ type: filter === 'all' ? null : filter }).then(setPosts).catch(console.error);
   };
 
   useEffect(() => { load(); }, [filter]);
+
+  // If arriving from a "Latest on the Wall" link with a specific post,
+  // make sure it's actually visible (switch to "All") and scroll to it.
+  useEffect(() => {
+    if (highlightId && filter !== 'all') setFilter('all');
+  }, [highlightId]);
+
+  useEffect(() => {
+    if (!highlightId || hasScrolled.current || posts.length === 0) return;
+    const el = postRefs.current[highlightId];
+    if (el) {
+      el.scrollIntoView({ behavior: 'smooth', block: 'center' });
+      hasScrolled.current = true;
+    }
+  }, [highlightId, posts]);
 
   const handleLike = async (post) => {
     if (likedIds.has(post.id)) return;
@@ -71,8 +91,15 @@ const Wall = () => {
               const meta = META[post.type] || META.announcement;
               const Icon = meta.icon;
               const liked = likedIds.has(post.id);
+              const isHighlighted = highlightId === post.id;
               return (
-                <div key={post.id} className="bg-white rounded-2xl border border-slate-100 shadow-sm overflow-hidden border-l-4 border-l-red-600 flex flex-col md:flex-row">
+                <div
+                  key={post.id}
+                  ref={(el) => { postRefs.current[post.id] = el; }}
+                  className={`bg-white rounded-2xl border shadow-sm overflow-hidden border-l-4 border-l-red-600 flex flex-col md:flex-row transition-all ${
+                    isHighlighted ? 'border-red-300 ring-2 ring-red-500/40' : 'border-slate-100'
+                  }`}
+                >
                   {post.image_url && (
                     <div className="md:w-64 h-48 md:h-auto shrink-0 overflow-hidden">
                       <img src={post.image_url} alt="" className="w-full h-full object-cover" />
