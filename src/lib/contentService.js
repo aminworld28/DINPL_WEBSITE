@@ -108,9 +108,21 @@ export async function likeWallPost(postId, sessionId) {
     if (error.code === '23505') return false; // already liked this session
     throw error;
   }
-  await supabase.rpc('increment_wall_post_likes', { post_id_input: postId }).catch(() => {
-    // Fallback if the RPC function isn't set up: read-modify-write
-  });
+
+  // Increment the visible counter via the privileged RPC (a direct table
+  // update from an anonymous visitor would be blocked by RLS, same as the
+  // insert above would be without its own policy). This call has been
+  // observed to fail silently on some networks/browsers even though the
+  // like itself was recorded above, leaving the count stuck — so we retry
+  // a few times with a short backoff and log clearly instead of hiding it.
+  for (let attempt = 0; attempt < 3; attempt++) {
+    const { error: rpcError } = await supabase.rpc('increment_wall_post_likes', { post_id_input: postId });
+    if (!rpcError) return true;
+    console.error(`increment_wall_post_likes failed (attempt ${attempt + 1}/3):`, rpcError);
+    if (attempt < 2) await new Promise((r) => setTimeout(r, 400 * (attempt + 1)));
+  }
+
+  console.error(`Like for post ${postId} was recorded but the visible count could not be updated after 3 attempts.`);
   return true;
 }
 

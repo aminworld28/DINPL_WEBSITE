@@ -1,0 +1,6 @@
+The image dimensions are:
+
+Width: 1920 px
+Height: 1440 px
+Aspect ratio: 4:3
+Format: JPG
